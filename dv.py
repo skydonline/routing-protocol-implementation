@@ -43,7 +43,7 @@ class DVRouter(Router):
         """
         Integrate a neighbor's distance-vector advertisement.
 
-        This method implements the Bellman–Ford update logic. It processes
+        This method implements the Bellman-Ford update logic. It processes
         the received advertisement and updates the router's routing table
         dynamically.
 
@@ -57,7 +57,38 @@ class DVRouter(Router):
           2. `self.routes`: A dictionary mapping each destination to the outgoing `Link` object used as the next hop.
         - Return `True` if any changes are made to these structures; otherwise, return `False`.
         """
-        pass
+        changed = False
+
+        for dest, adv_cost in adv.items():
+            # Skip if destination is router itself
+            if dest == self.address:
+                continue
+
+            # Calculate new cost to destination
+            new_cost = link.cost + adv_cost
+            if new_cost >= self.INFINITY:
+                new_cost = self.INFINITY
+
+            # Get current cost to destination
+            current_cost = self.spcost.get(dest, self.INFINITY)
+
+            # Check if current route to dest uses this link
+            if self.routes.get(dest) == link:
+                # Update cost or remove route if unreachable
+                if new_cost != current_cost:
+                    if new_cost == self.INFINITY:
+                        self.spcost.pop(dest, None)
+                        self.routes.pop(dest, None)
+                    else:
+                        self.spcost[dest] = new_cost
+                    changed = True
+            elif new_cost < current_cost:
+                # Update to use new better route
+                self.spcost[dest] = new_cost
+                self.routes[dest] = link
+                changed = True
+
+        return changed
 
 # A network with nodes of type DVRouter.
 
